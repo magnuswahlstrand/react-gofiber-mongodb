@@ -1,11 +1,10 @@
 import {Table} from "@mantine/core";
-import React, {useState} from "react";
+import React from "react";
 import {UserSearch} from "./UserSearch";
-import {useQuery} from "react-query";
-import axios from "axios";
+import {useUsers} from "../hooks/useUsers";
 
 type User = {
-    id: number;
+    id: string;
     name: string;
     phone: string;
     email: string;
@@ -13,32 +12,15 @@ type User = {
 
 const TableStyle = {border: '1px solid lightgray'}
 
-function useUsers() {
-    const [searchValue, setSearchValue] = useState('');
-
-    const cappedSearchValue = searchValue.length >= 2 ? searchValue : null
-
-    const query = async () => {
-        const url = "http://localhost:3001/users"
-        const params = cappedSearchValue ?  {params: {q: searchValue}} : {params: {}}
-
-        const {data} = await axios.get(url, params)
-        return data
-    }
-    const {isLoading, error, data, isFetching} = useQuery(["user data", cappedSearchValue], query);
-
-    return {users: data ? data : [], searchValue, setSearchValue};
-}
-
 export const UserTable = () => {
     const {users, searchValue, setSearchValue} = useUsers();
 
     const rows = users.map((user: User) => (
         <tr key={user.id}>
-            <td>{user.id}</td>
-            <td>{user.name}</td>
-            <td>{user.phone}</td>
-            <td>{user.email}</td>
+            <td style={{ whiteSpace: 'nowrap' }}>{user.id.slice(-6)}</td>
+            <td style={{ whiteSpace: 'nowrap' }}>{user.name}</td>
+            <td style={{ whiteSpace: 'nowrap' }}>{user.phone}</td>
+            <td style={{ whiteSpace: 'nowrap' }}>{user.email}</td>
         </tr>
     ));
 
@@ -48,7 +30,7 @@ export const UserTable = () => {
             <Table highlightOnHover striped style={TableStyle}>
                 <thead>
                 <tr>
-                    <th>ID</th>
+                    <th>Short&nbsp;ID</th>
                     <th>Name</th>
                     <th>Phone</th>
                     <th>E-mail</th>

@@ -1,62 +1,53 @@
 package main
 
 import (
-	"github.com/go-playground/validator/v10"
+	"context"
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/cors"
+	"github.com/qiniu/qmgo"
 	"log"
 )
 
-type ListUsersResponse struct {
-	Users []User `json:"users"`
-}
-
-type AddUserResponse = User
-
-var users []User
-
 type User struct {
-	Email string `validate:"required,email,min=6,max=32"`
-	Name  string `validate:"required,min=2,max=32"`
+	ID    string `json:"id" bson:"_id"`
+	Name  string `json:"name"`
+	Email string `json:"email"`
+	Phone string `json:"phone"`
 }
 
-var validate = validator.New()
+var mongoConfig = &qmgo.Config{
+	Uri:      "mongodb://localhost:27017",
+	Database: "user-db",
+	Coll:     "users",
+}
 
-func AddUser(c *fiber.Ctx) error {
-	//Connect to database
+func mongoClient() *qmgo.QmgoClient {
+	mongo, err := qmgo.Open(context.Background(), mongoConfig)
+	if err != nil {
+		log.Fatalln(mongo)
+	}
+	return mongo
+}
 
-	var user User
-	if err := c.BodyParser(&user); err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"message": err.Error(),
-		})
+type Service struct {
+	mongo *qmgo.QmgoClient
+}
+
+func setup() *fiber.App {
+	mongo := mongoClient()
+
+	s := Service{
+		mongo: mongo,
 	}
 
-	if err := validate.Struct(user); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(serializeValidationErrors(err))
-
-	}
-
-	users = append(users, user)
-
-	//Do something else here
-
-	//Return user
-	return c.JSON(user)
+	app := fiber.New()
+	app.Use(cors.New(cors.Config{AllowOrigins: "http://localhost:3000"}))
+	app.Get("/users", s.ListUsers)
+	app.Post("/users", s.AddUser)
+	return app
 }
 
 func main() {
-	app := Setup()
-
+	app := setup()
 	log.Fatal(app.Listen(":8080"))
-}
-
-func Setup() *fiber.App {
-	app := fiber.New()
-
-	app.Get("/users", func(c *fiber.Ctx) error {
-		return c.JSON(ListUsersResponse{users})
-	})
-
-	app.Post("/users", AddUser)
-	return app
 }
